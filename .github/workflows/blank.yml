@@ -1,20 +1,50 @@
-name: vps
- 
-# Controls when the workflow will run
+name: Auto Backup & Restore
+
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
- 
+  schedule:
+    - cron: "0 */5 * * *"   # every 5 hours
+
 jobs:
-  build:
+  backup:
     runs-on: ubuntu-latest
- 
+
     steps:
-      - name: Checkout repository
+      - name: Checkout Repo
         uses: actions/checkout@v4
- 
-      - name: Run VPS
-        run: curl -sSf https://sshx.io/get | sh -s run
+
+      # 🔄 AUTO RESTORE
+      - name: Restore Backup
+        uses: actions/download-artifact@v4
+        with:
+          name: data-backup
+          path: ./
+        continue-on-error: true
+
+      - name: Extract Backup
+        run: |
+          if [ -f backup.tar.gz ]; then
+            tar -xzf backup.tar.gz
+            echo "Backup restored"
+          else
+            echo "No backup found"
+          fi
+
+      # ⏳ WORK TIME (example)
+      - name: Do Work
+        run: |
+          echo "Running app..."
+          sleep 18000   # 5 hours
+
+      # 💾 AUTO BACKUP
+      - name: Create Backup
+        run: |
+          tar -czf backup.tar.gz data/
+
+      # ☁️ UPLOAD BACKUP
+      - name: Upload Backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-backup
+          path: backup.tar.gz
+          retention-days: 1
